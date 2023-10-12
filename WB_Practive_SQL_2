@@ -1,0 +1,64 @@
+1. Укажите, в каком порядке призводится написание команд при выборе данных из таблицы: SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT. Также укажите, в каком порядке команды выполняются при запуске отработки запроса.
+Ответ: порядок при выборе данных из таблицы следующий: SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT.
+Порядок выполнения команд при запуске отработки запроса:
+	1. FROM - определения таблицы
+	2. WHERE - применение условий, фильтрация строк в соответствии с условиями 
+	3. GROUP BY - группировка данных в соответствии с критериями 
+	4. HAVING - фильтрация на уровне группировки
+	5. SELECT - выборка столбцов для отображения
+	6. ORDER BY - результаты выборки фильтруются в соответствиями с указанными столбцами и условиями сортировки
+	7. LIMIT - ограничение количества возвращаемых строк выборки
+
+2. Какая команда позволит вам удалить строки таблицы по условию? Можно ли удалить таблицу с помощью данной команды?
+Ответ: для удаления строк в SQL предназначена команда DELETE.
+Структура команды DELETE следующая: DELETE FROM table_name WHERE condition;
+Команда DELETE  предназначена для удаления строк, для удаления таблиц используется команда DROP TABLE, структура которой: DROP TABLE table_name;
+
+3. Вам даны таблицы users, orders с информацией о пользователях и заказах. Отберите тех пользователей, кто оформлял заказы осенью 2022 года.
+Ответ: первое, что я сделал в этом задании - это посмотрел типы столбцов таблицы orders с помощью команды: SELECT column_name, column_default, data_type FROM INFORMATION_SCHEME.COLUMNS WHERE table_name='orders'; , где обнаружил, что столбец с датой находится в неподходящем типе, исправил это командой: ALTER TABLE orders ALTER COLUMN _order_date TYPE DATE USING to_date(_order_date, 'DD/MM/YYYY');
+
+SQL-скрипт для 3 задания получился следующим:
+SELECT * FROM users 
+WHERE id IN (SELECT user_id
+	     FROM orders
+	     WHERE _order_date BETWEEN '2022-09-01' AND '2022-11-30' 
+	     					    AND status='create_order');
+
+4. Обновите значения в таблице orders: пользователю, сделавшему заказ на наибольшую сумму (за предоставленное время) сделайте скидку 10% на все покупки. Выведите для всех пользователей таблицы orders имеющиеся данные о заказах, а также размер скидки (discount) и итоговую цену после применения скидки (new_price)
+Скрипт:
+ALTER TABLE orders
+ADD COLUMN discount REAL DEFAULT 0; 
+
+UPDATE orders 
+SET discount = 10.0
+WHERE price = (SELECT MAX(price) FROM ORDERS);
+
+ALTER TABLE orders
+ADD COLUMN new_price REAL NULL;
+
+UPDATE orders 
+SET new_price = price * (1-(discount/100));
+
+SELECT * FROM orders;
+
+
+5. Удалите из таблицы orders заказы, которые были отменены ИЛИ количество товаров в заказе превышало 4.
+Скрипт:
+DELETE FROM orders 
+WHERE status='cancel_order' OR items > 4;
+
+6. Укажите 3 наиболее популярных почтовых индекса среди пользователей мужчин (например, outlook/gmail и тд). 
+Скрипт:
+SELECT SUBSTRING(email FROM '@(.*)$') AS DOMAIN, COUNT(*)
+FROM users
+WHERE gender='Male'
+GROUP BY DOMAIN
+ORDER BY COUNT DESC
+LIMIT 3;
+
+7. Объясните, отработает ли приведенный ниже код в СУБД PostgreSQL (и почему):
+	SELECT old_price - new_price AS diff 
+	FROM goods 
+	WHERE diff > 100
+	
+Ответ: дело в том, что мы не можем использовать алиасы в блоке WHERE. Данный код выдаст следующую ошибку: df error: ERROR: column "diff" does not exist. Вычисление блока WHERE логически предшествует вычислению блока SELECT (1 задание).
